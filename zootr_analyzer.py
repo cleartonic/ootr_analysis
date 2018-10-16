@@ -13,7 +13,7 @@ import pickle
 import time
 
 MAIN_DIR = os.getcwd()
-
+RENDER_TIME = str(int(time.time()))
 
 # TO DO 
 # Create filter on play_map for Small / Boss Keys, Kokiri Shop
@@ -91,6 +91,10 @@ class Seed:
                             +str(list(self.play_map[item].keys())[0])))
                             +" "
                             +str(list(self.play_map[item].values())[0]))
+        print("-----")
+        print("Songs:")
+        for item in self.songs_dict:
+            print('{:.55}'.format('{:55}'.format("  "+item+": "))+" "+self.songs_dict[item])
         print("-----")
         print("Go Mode items: ["+self.mst+"]")   
         for item in sorted(self.gomode):
@@ -237,8 +241,8 @@ go_mode_dict = {'Deku':['Slingshot'],
                 'Shadow':['Progressive Strength Upgrade','Zeldas Lullaby','Bow','Magic Meter','Progressive Hookshot','Hover Boots','Lens of Truth','Dins Fire'],
                 'Spirit':['Progressive Strength Upgrade','Zeldas Lullaby','Bow','Progressive Hookshot','Mirror Shield'],
                 'All':['Bow','Magic Meter','Light Arrows']}
-
-
+songs = ['Impa at Castle','Song from Malon','Song from Saria','Song at Windmill','Song from Composer Grave','Sheik Forest Song','Sheik at Temple','Sheik at Colossus','Sheik in Crater','Sheik in Ice Cavern','Sheik in Kakariko','Song from Ocarina of Time']
+songs_rewards = ["Bolero of Fire","Eponas Song","Minuet of Forest","Nocturne of Shadow","Prelude of Light","Requiem of Spirit","Sarias Song","Serenade of Water","Song of Storms","Song of Time","Suns Song","Zeldas Lullaby"]
 
     
 
@@ -286,8 +290,8 @@ for seed in seed_list:
     seed.gomode_dict = {k:v for k, v in seed.check_dict.items() if v in gomode_list}
 
     
-
-
+    seed.filter_checklist(songs)
+    seed.songs_dict = seed.output_checks
 
 
 
@@ -500,7 +504,7 @@ if False:
 #####################
 
 # def call_ab_filter(seed_list, criteria, df_choice = 'req', filter_str=''):
-if True:
+if False:
     criteria = 'all_dungeons'
     df_choice = 'play'
     # seed_list 
@@ -570,15 +574,82 @@ if True:
     df_final['multiple'] = df_final['delta'] / df_final['percent_nonmatch']
     df_final['multiple'] = df_final['multiple'].apply(apply_multiple)
     
-    df_final.to_csv('analysis_render/abfilter_'+criteria+"_"+df_choice+"_"+str(int(time.time()))+'.csv',index=None)
+    df_final.to_csv('analysis_render/abfilter_'+criteria+"_"+df_choice+"_"+RENDER_TIME+'.csv',index=None)
 
 
 
 
+##################
+# SONG DISTRIBUTION
+##################
+    
+    
+if True:
+    # Checking if first four songs are correlated to all_dungeons vs. medallions
+
+    seed_list_medallions = []
+    seed_list_alldungeons = []
+    
+    for seed in seed_list:
+        if seed.length == 'all_dungeons':
+            seed_list_alldungeons.append(seed)
+        else:
+            seed_list_medallions.append(seed)
+            
+            
+    # FIRST: create an overall dataframe for metrics per song 
+    
+    
+    # All Dungeons
+    df = pd.DataFrame()    
+    for seed in seed_list_alldungeons:
+        temp_dict = dict(zip(songs_rewards,[0]*len(songs_rewards)))
+        seed_songs = sorted([seed.songs_dict['Impa at Castle'],seed.songs_dict['Song from Malon'],seed.songs_dict['Song from Saria'],seed.songs_dict['Song at Windmill']])
+        for song in seed_songs:
+            temp_dict[song] = 1
+        temp_dict['length'] = seed.length
+        temp_dict['seed'] = seed.name
+        temp_dict['seed_songs'] = '|'.join(seed_songs)
+        df_temp = pd.DataFrame(temp_dict,index=[0])
+        df = df.append(df_temp)
+    df_pivot = df.pivot_table(index=['length'],values=list(df.columns[0:12]),aggfunc=np.sum)/(len(seed_list_alldungeons))*100
+    df_pivot = df_pivot.transpose()
+    df_pivot.to_csv('analysis_render/songs_overall_metrics_alldungeons_'+RENDER_TIME+'.csv')
+
+    # Medallions
+    df2 = pd.DataFrame()    
+    for seed in seed_list_medallions:
+        temp_dict = dict(zip(songs_rewards,[0]*len(songs_rewards)))
+        seed_songs = sorted([seed.songs_dict['Impa at Castle'],seed.songs_dict['Song from Malon'],seed.songs_dict['Song from Saria'],seed.songs_dict['Song at Windmill']])
+        for song in seed_songs:
+            temp_dict[song] = 1
+        temp_dict['length'] = seed.length
+        temp_dict['seed'] = seed.name
+        temp_dict['seed_songs'] = '|'.join(seed_songs)
+        df_temp = pd.DataFrame(temp_dict,index=[0])
+        df2 = df2.append(df_temp)
+    df_pivot2 = df2.pivot_table(index=['length'],values=list(df.columns[0:12]),aggfunc=np.sum)/(len(seed_list_medallions))*100
+    df_pivot2 = df_pivot2.transpose()
+    df_pivot2.to_csv('analysis_render/songs_overall_metrics_medallions_'+RENDER_TIME+'.csv')
+    
+    # Joined clean table
+    
+    df_pivot3 = df_pivot.join(df_pivot2)
+    df_pivot3['delta'] = df_pivot3['all_dungeons'] - df_pivot3['medallions']
+    df_pivot3.to_csv('analysis_render/songs_overall_metrics_both_'+RENDER_TIME+'.csv')
 
 
-
-
+    # SECOND: Correlation matrix
+    df = df.append(df2)   # new df 
+    df['count'] = 1
+    df.to_csv('analysis_render/songs_overall_completeset_'+RENDER_TIME+'.csv')
+    df_lookup = df.pivot_table(index=['seed_songs',],values=list(df.columns[0:12]))
+    df_lookup.to_csv('analysis_render/songs_lookup_matrix.csv')
+    
+    df_pivot = df.pivot_table(index=['seed_songs'],columns=['length'],values='count',aggfunc=np.sum)
+    df_final = df_pivot.join(df_lookup)
+    df_corr = df_final.corr()[['all_dungeons','medallions']].drop(['all_dungeons','medallions'])
+    df_corr.to_csv('analysis_render/songs_corr_combined_'+RENDER_TIME+'.csv')
 
 
 
@@ -589,4 +660,4 @@ if True:
 
 
 ### TEST SEED ###
-x = seed_list[0]
+seed = seed_list[0]
