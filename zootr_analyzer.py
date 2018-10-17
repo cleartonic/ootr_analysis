@@ -167,7 +167,29 @@ def filter_seedlist(original_seed_list, filter_method_list):
     
     
     return new_seed_list
-    
+
+# Func to stringify 'multiple' metric
+def apply_multiple(x):
+    x = round(x,2) + 1
+    x = str(x)[0:3] + "x"
+    return x
+
+# Func to stringify 'multiple' metric based on 2 columns
+def apply_multiple_2(x,y):
+    try:
+        z = x/y
+        z = round(z,2) + 1
+        z = str(z)[0:3] + "x"
+    except:
+        z = 'n/a'
+    return z
+
+# Func for applying song # 
+def apply_songcount(x,y):
+    if x == 0:
+        return 0
+    else:
+        return y
     
 #############
 # SEED HANDLER
@@ -273,25 +295,28 @@ if True:
 
 os.chdir(MAIN_DIR)
 
-for seed in seed_list:
-    list_of_mst = seed.mst.split(" ")
-    gomode_list = []
-    for mst in list_of_mst:
-        for item in go_mode_dict[mst]:
-            gomode_list.append(item)
-    for item in go_mode_dict['All']:
-        gomode_list.append(item)
-    gomode_list = list(set(gomode_list))
-    if "Water" in seed.mst:
-        gomode_list.append('Progressive Hookshot')
-    if "Spirit" in seed.mst:
-        gomode_list.append('Progressive Strength Upgrade')
-    seed.gomode = gomode_list
-    seed.gomode_dict = {k:v for k, v in seed.check_dict.items() if v in gomode_list}
 
+# # # THIS SHOULD BE BUILT IN ON SEED GENERATION:
+if True:
+    for seed in seed_list:
+        list_of_mst = seed.mst.split(" ")
+        gomode_list = []
+        for mst in list_of_mst:
+            for item in go_mode_dict[mst]:
+                gomode_list.append(item)
+        for item in go_mode_dict['All']:
+            gomode_list.append(item)
+        gomode_list = list(set(gomode_list))
+        if "Water" in seed.mst:
+            gomode_list.append('Progressive Hookshot')
+        if "Spirit" in seed.mst:
+            gomode_list.append('Progressive Strength Upgrade')
+        seed.gomode = gomode_list
+        seed.gomode_dict = {k:v for k, v in seed.check_dict.items() if v in gomode_list}
     
-    seed.filter_checklist(songs)
-    seed.songs_dict = seed.output_checks
+        
+        seed.filter_checklist(songs)
+        seed.songs_dict = seed.output_checks
 
 
 
@@ -542,11 +567,7 @@ if False:
             print("Failed to split seed "+x)
             return x
         
-    # Func to stringify 'multiple' metric
-    def apply_multiple(x):
-        x = round(x,2) + 1
-        x = str(x)[0:3] + "x"
-        return x
+
         
     df['clean_seed'] = df['seed'].apply(clean_seed)
     # With full match/nonmatch, generate distributions
@@ -614,7 +635,7 @@ if True:
         df = df.append(df_temp)
     df_pivot = df.pivot_table(index=['length'],values=list(df.columns[0:12]),aggfunc=np.sum)/(len(seed_list_alldungeons))*100
     df_pivot = df_pivot.transpose()
-    df_pivot.to_csv('analysis_render/songs_overall_metrics_alldungeons_'+RENDER_TIME+'.csv')
+    # df_pivot.to_csv('analysis_render/songs_metrics_alldungeons_'+RENDER_TIME+'.csv')  # Unnecessary output
 
     # Medallions
     df2 = pd.DataFrame()    
@@ -630,26 +651,76 @@ if True:
         df2 = df2.append(df_temp)
     df_pivot2 = df2.pivot_table(index=['length'],values=list(df.columns[0:12]),aggfunc=np.sum)/(len(seed_list_medallions))*100
     df_pivot2 = df_pivot2.transpose()
-    df_pivot2.to_csv('analysis_render/songs_overall_metrics_medallions_'+RENDER_TIME+'.csv')
+    # df_pivot2.to_csv('analysis_render/songs_metrics_medallions_'+RENDER_TIME+'.csv') # Unnecessary output
     
     # Joined clean table
     
     df_pivot3 = df_pivot.join(df_pivot2)
-    df_pivot3['delta'] = df_pivot3['all_dungeons'] - df_pivot3['medallions']
-    df_pivot3.to_csv('analysis_render/songs_overall_metrics_both_'+RENDER_TIME+'.csv')
+    df_pivot3['delta'] = df_pivot3['medallions'] - df_pivot3['all_dungeons']
+    df_pivot3 = df_pivot3.sort_values(by='delta',ascending=False)
+    df_pivot3.reset_index(inplace=True)
+    df_pivot3.columns = ['songs','all_dungeons','medallions','delta']
+    df_pivot3.to_csv('analysis_render/songs_metrics_both_'+RENDER_TIME+'.csv',index=None)
 
 
     # SECOND: Correlation matrix
     df = df.append(df2)   # new df 
     df['count'] = 1
-    df.to_csv('analysis_render/songs_overall_completeset_'+RENDER_TIME+'.csv')
+    df.to_csv('analysis_render/songs_completeset_'+RENDER_TIME+'.csv')
     df_lookup = df.pivot_table(index=['seed_songs',],values=list(df.columns[0:12]))
-    df_lookup.to_csv('analysis_render/songs_lookup_matrix.csv')
+    df_lookup.to_csv('analysis_render/songs_lookup_matrix_'+RENDER_TIME+'.csv')
     
     df_pivot = df.pivot_table(index=['seed_songs'],columns=['length'],values='count',aggfunc=np.sum)
-    df_final = df_pivot.join(df_lookup)
-    df_corr = df_final.corr()[['all_dungeons','medallions']].drop(['all_dungeons','medallions'])
-    df_corr.to_csv('analysis_render/songs_corr_combined_'+RENDER_TIME+'.csv')
+    cols = list(df_pivot.columns)
+    df_pivot.reset_index(inplace=True)
+    df_pivot.columns = ['four_songs'] + cols
+    cols = list(df_pivot.columns)
+    df_pivot = df_pivot.fillna(0)
+    df_pivot['delta'] = df_pivot['medallions'] - df_pivot['all_dungeons']
+    df_pivot['multiple'] = np.vectorize(apply_multiple_2)(df_pivot['delta'],df_pivot['all_dungeons'])
+    df_pivot = df_pivot[cols[0:3] + ['delta'] + ['multiple']]
+    df_pivot = df_pivot.sort_values(by='multiple',ascending=False)  
+    df_pivot.to_csv('analysis_render/songs_pivot_combined_'+RENDER_TIME+'.csv',index=None)
+    
+    
+    # Finally, correlations
+    df_final = df_pivot.join(df_lookup,on='four_songs')
+    df_final.to_csv('analysis_render/songs_pivot_combinedFULL_'+RENDER_TIME+'.csv',index=None)
+
+
+        
+    # NEW METHOD: Correct...?
+    
+    #   Medallions
+    df_final_medallions = df_final.drop('all_dungeons',axis=1)
+    for col in df_final_medallions.columns[4:]:
+        df_final_medallions[col] = np.vectorize(apply_songcount)(df_final_medallions[col],df_final_medallions['medallions'])
+    df_final_medallions_corr = df_final_medallions.corr()[['medallions']].drop(['delta','medallions'])
+    
+    #   All dungeons
+    df_final_all_dungeons = df_final.drop('medallions',axis=1)
+    for col in df_final_all_dungeons.columns[4:]:
+        df_final_all_dungeons[col] = np.vectorize(apply_songcount)(df_final_all_dungeons[col],df_final_all_dungeons['all_dungeons'])
+    df_final_all_dungeons_corr = df_final_all_dungeons.corr()[['all_dungeons']].drop(['delta','all_dungeons'])
+    
+    # Final corr
+    df_corr = df_final_medallions_corr.join(df_final_all_dungeons_corr)
+    df_corr = df_corr.round(4)
+    df_corr.reset_index(inplace=True)
+    df_corr['delta'] = df_corr['medallions'] - df_corr['all_dungeons']
+    df_corr.columns = ['songs','medallions','all_dungeons','delta']
+    df_corr = df_corr.sort_values(by='delta',ascending=False)
+    df_corr.to_csv('analysis_render/songs_corr_combined_'+RENDER_TIME+'.csv',index=None)
+    
+    
+    # Old Method (incorrect...?)
+    df_corr = df_final.corr()[['all_dungeons','medallions']].drop(['all_dungeons','medallions','delta'])
+    df_corr = df_corr.round(4)
+    df_corr['delta'] = df_corr['medallions'] - df_corr['all_dungeons']
+    df_corr.reset_index(inplace=True)
+    df_corr = df_corr.sort_values(by='delta',ascending=False)
+    df_corr.columns = ['songs','all_dungeons','medallions','delta']
+    df_corr.to_csv('analysis_render/songs_corr_combined_OLDMETHOD_'+RENDER_TIME+'.csv',index=None)
 
 
 
