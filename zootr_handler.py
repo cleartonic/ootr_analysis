@@ -20,8 +20,8 @@ MAIN_DIR = os.getcwd()
 sys.path.append('latest_build/')
 time_str = str(datetime.datetime.now()).replace(":","-")
 time_now = "archived/archive_"+time_str+"/"
-cluster_size = 100
-generate_num = 10000
+cluster_size = 5
+generate_num = 10
 
 
 #################
@@ -53,6 +53,17 @@ def clean_seed(x):
         print("Failed to split seed "+x)
         return x
 
+def filter_dict(input_dict, filter_str, filter_type):
+    # Arguments: dictionary, filter string, filter_type
+    # filter_type = eiter keys or values of the dictionary
+    # returns a LIST
+    if filter_type == 'keys':
+        return list({k: v for k, v in input_dict.items() if filter_str in k })
+    elif filter_type == 'vals':
+        return list({k: v for k, v in input_dict.items() if filter_str in v })
+    else:
+        print("Error on filter_type.")
+        return None
 
 
 
@@ -123,8 +134,8 @@ def aggregate_required():
             df = pd.read_csv(file)
             df_master = df_master.append(df)
         df_master.to_csv('../../combined/data_req.csv',index=None)
-        df_master.pivot_table(index=['check'],values='count',aggfunc=np.sum).to_csv('../../combined/data_req_checkpivot.csv',index=None)
-        df_master.pivot_table(index=['check','reward'],values='count',aggfunc=np.sum).to_csv('../../combined/data_req_checkrewardpivot.csv',index=None)
+        df_master.pivot_table(index=['check'],values='count',aggfunc=np.sum).to_csv('../../combined/data_req_checkpivot.csv')
+        df_master.pivot_table(index=['check','reward'],values='count',aggfunc=np.sum).to_csv('../../combined/data_req_checkrewardpivot.csv')
 
 
 
@@ -264,8 +275,8 @@ def aggregate_distribution():
         
         os.chdir(MAIN_DIR)
         df_master.to_csv('latest_build/Output/combined/data_dist.csv',index=None)
-        df_master.pivot_table(index=['check'],values='count',aggfunc=np.sum).to_csv('latest_build/Output/combined/data_dist_checkpivot.csv',index=None)
-        df_master.pivot_table(index=['check','reward'],values='count',aggfunc=np.sum).to_csv('latest_build/Output/combined/data_dist_checkrewardpivot.csv',index=None)
+        df_master.pivot_table(index=['check'],values='count',aggfunc=np.sum).to_csv('latest_build/Output/combined/data_dist_checkpivot.csv')
+        df_master.pivot_table(index=['check','reward'],values='count',aggfunc=np.sum).to_csv('latest_build/Output/combined/data_dist_checkrewardpivot.csv')
 
 
 
@@ -405,6 +416,53 @@ def clear_dirs():
 #################
 
 
+# Lookups
+check_lookup = pd.read_csv('check_lookup.csv',index_col='check')
+reward_lookup = pd.read_csv('reward_lookup.csv',index_col='reward')
+
+
+# Create dictionaries from lookups
+check_dict = check_lookup.to_dict()
+check_dict = check_dict['requirements']
+
+reward_dict = reward_lookup.to_dict()
+reward_dict_unique = reward_lookup['unique']
+reward_dict_critical = reward_lookup['critical']
+reward_dict_important = reward_lookup['important']
+
+
+
+# Create lists 
+reward_important = filter_dict(reward_dict_important, 'y', 'vals')
+reward_critical = filter_dict(reward_dict_critical, 'y', 'vals')
+reward_unique = filter_dict(reward_dict_unique, 'y', 'vals')
+reward_allarrows = ['Bow','Fire Arrows','Ice Arrows','Light Arrows','Magic Meter']
+
+check_deku = filter_dict(check_dict, 'Deku Tree', 'keys')
+check_dc = filter_dict(check_dict, 'Dodongos Cavern', 'keys')
+check_jabu = filter_dict(check_dict, 'Jabu Jabu', 'keys')
+check_forest = filter_dict(check_dict, 'Forest Temple', 'keys')
+check_fire = filter_dict(check_dict, 'Fire Temple', 'keys')
+check_water = filter_dict(check_dict, 'Water Temple', 'keys')
+check_shadow = filter_dict(check_dict, 'Shadow Temple', 'keys')
+check_spirit = filter_dict(check_dict, 'Spirit Temple', 'keys')
+check_well = filter_dict(check_dict, 'Bottom of the Well', 'keys')
+check_gtg = filter_dict(check_dict, 'Gerudo Training Grounds', 'keys')
+check_ice = filter_dict(check_dict, 'Ice Cavern', 'keys')
+check_ganons = filter_dict(check_dict, 'Ganons Castle', 'keys')
+
+check_bossheart = filter_dict(check_dict, 'Heart', 'keys') # Needs to be fixed, Piece of Heart appears
+
+check_noreqs = filter_dict(check_dict, 'No req', 'vals')
+check_reqs = filter_dict(check_dict, 'Reqs', 'vals')
+check_songs = filter_dict(check_dict, 'Song', 'vals')
+
+check_worst = ['30 Gold Skulltulla Reward','40 Gold Skulltulla Reward','50 Gold Skulltulla Reward','Deku Theater Mask of Truth','Biggoron','Adult Fishing','Child Fishing','Horseback Archery 1000 Points','Horseback Archery 1500 Points']
+
+
+# Other
+mst = ['Forest Medallion','Fire Medallion','Water Medallion','Shadow Medallion','Spirit Medallion','Light Medallion','Kokiri Emerald','Goron Ruby','Zora Sapphire']
+dungeon_dict = {'Queen Gohma':'Deku','King Dodongo':'Dodongo','Barinade':'Jabu','Phantom Ganon':'Forest','Volvagia':'Fire','Morpha':'Water','Bongo Bongo':'Shadow','Twinrova':'Spirit'}
 go_mode_dict = {'Deku':['Slingshot'],
                 'Dodongo':['Progressive Strength Upgrade','Bomb Bag'],
                 'Jabu':['Bottle with Letter','Boomerang'],
@@ -414,6 +472,9 @@ go_mode_dict = {'Deku':['Slingshot'],
                 'Shadow':['Progressive Strength Upgrade','Zeldas Lullaby','Bow','Magic Meter','Progressive Hookshot','Hover Boots','Lens of Truth','Dins Fire'],
                 'Spirit':['Progressive Strength Upgrade','Zeldas Lullaby','Bow','Progressive Hookshot','Mirror Shield'],
                 'All':['Bow','Magic Meter','Light Arrows']}
+songs = ['Impa at Castle','Song from Malon','Song from Saria','Song at Windmill','Song from Composer Grave','Sheik Forest Song','Sheik at Temple','Sheik at Colossus','Sheik in Crater','Sheik in Ice Cavern','Sheik in Kakariko','Song from Ocarina of Time']
+songs_rewards = ["Bolero of Fire","Eponas Song","Minuet of Forest","Nocturne of Shadow","Prelude of Light","Requiem of Spirit","Sarias Song","Serenade of Water","Song of Storms","Song of Time","Suns Song","Zeldas Lullaby"]
+
 
 class Seed:
     def __init__(self, seed, check_dict, req_dict, play_dict, mst_map, length, settings):
@@ -428,7 +489,8 @@ class Seed:
         self.mst = mst_map
         self.length = length
         self.settings = settings
-        
+
+   
         
         # Clean play_dict into a map without Gold Skulltulas
         
@@ -440,7 +502,7 @@ class Seed:
             self.play_map[num] = {item:temp_play_dict[item]}
             num = num + 1
         
-        # Create gomode mapping:
+        # Create gomode_mst mapping (step 1):
         
         list_of_mst = self.mst.split(" ")
         gomode_list = []
@@ -455,11 +517,101 @@ class Seed:
         if "Spirit" in self.mst:
             gomode_list.append('Progressive Strength Upgrade')
         self.gomode_items = gomode_list
-        self.gomode_dict = {k:v for k, v in self.check_dict.items() if v in gomode_list}
+        self.gomode_mst_dict = {k:v for k, v in self.check_dict.items() if v in gomode_list}
 
+        # create songs
+        self.filter_checklist(songs)
+        self.songs_dict = self.output_checks
 
+        # Create final gomode mapping (step 2):
+        
+        check_ranks = check_lookup[['requirements','rank']].to_dict()['rank']
+        w = self.gomode_items.copy() # list of gomode items
+        y = self.req_dict.copy()
+        y_values = sorted(list(y.values()).copy())   # the req dict's existing values
+
+        # Specific clause for hookshot/scale/strength. If these are in the playthru log MORE than the required_items dict, then they need to be manually added to gomode items
+        problem_items = ['Progressive Strength Upgrade','Progressive Scale','Progressive Hookshot']
+        for item in problem_items:
+            num1 = w.count(item)
+            num2 = y_values.count(item)
+            num3 = list(self.play_dict.values()).count(item)
+            max_num = max(num1,num2,num3)
+            if max_num > num1:
+                w.append(item)        
+                
+        final_dict = self.req_dict.copy() # Final_dict will start with at least what's in req_dict
+        for reward in y_values:
+            if reward in w:
+                w.remove(reward)
+                
+
+        # With a list via missing_items, we need to update the req_dict until it has at least everything in the gomode dict. 
+        for item in w:
+            #print("-------------------")
+            #print("CHECKING ITEM "+item)
+            # For each item in the missing list, now find a matching dictionary entry for the reward. 
+            # Then see if its in final_dict. If it isnt, good, add it. If not, keep searching
+            
+            list_of_checks = filter_dict(self.check_dict,item,'vals') # returns a list of matching checks for that item
+            #print("LIST OF CHECKS: "+' | '.join(list_of_checks))
+            
+            local_rank = {}
+            for check in list_of_checks: # look at each check
+                local_rank[check] = check_ranks[check]
+            list_of_checks = pd.DataFrame.from_dict(local_rank,orient='index').sort_values(0).index.tolist()  # this is a convoluted way of sorting the dictionary by values, using a dataframe and returning an ordered list
+
+            for check in list_of_checks: # look at each check              
+                #print("Check "+check,"Rank "+str(local_rank[check]))
+                if check in final_dict.keys(): # if its already in the list, then keep searching the others 
+                    #print("Check "+check+" already in dict, pass.")
+                    pass  
+                else:        # Assign highest scoring rank
+                    #print("Check "+check+" assigned.")
+                    final_dict[check] = item
+                    break
+        self.gomode_dict = final_dict
+
+    def filter_checklist(self,filter_list):
+        self.output_checks = { your_key: self.check_dict[your_key] for your_key in filter_list }
+        
+
+    def filter_rewardlist(self,filter_list):
+        self.output_rewards = {k:v for k, v in self.check_dict.items() if v in filter_list}
+        
+    def info(self):
+        print("-----")
+        print("Distribution:")
+        for item in self.check_dict:            
+            print('{:.55}'.format('{:55}'.format("  "+item+": "))+" "+self.check_dict[item])
+        print("-----")
+        print("Songs:")
+        for item in self.songs_dict:
+            print('{:.55}'.format('{:55}'.format("  "+item+": "))+" "+self.songs_dict[item])
+        print("-----")
+        print("Playthrough:")
+        for item in self.play_map:
+            print('{:.55}'.format('{:55}'.format("  "+str(item)+" "
+                            +str(list(self.play_map[item].keys())[0])))
+                            +" "
+                            +str(list(self.play_map[item].values())[0]))
+        print("-----")
+        print("Required Items:")
+        for item in self.req_dict:
+            print('{:.55}'.format('{:55}'.format("  "+item+": "))+" "+self.req_dict[item])
+        print("-----")
+        print("Go Mode checks (refined from required items):")
+        gomode_temp = sorted(self.gomode_dict.items(), key=lambda x: x[1])
+        for item in gomode_temp:
+            print('{:.55}'.format('{:55}'.format("  "+item[0]+": "))+" "+item[1])
+        print("-----")
+        print('{:.55}'.format('{:55}'.format("Seed: "))+self.name)
+        print('{:.55}'.format('{:55}'.format("Length: "))+self.length)
+        print('{:.55}'.format('{:55}'.format("Dungeons: "))+self.mst)
+        
+        
+        
 # Generate Seed classes based off of data, both distribution & required items
-
 def generate_classes():
     print("Begin class generation.")
     # Location
@@ -478,11 +630,11 @@ def generate_classes():
         df_mst['seed_clean'] = df_mst['seed'].apply(clean_seed)
         
         
-        seed_list = df['seed_clean'].unique().tolist()
+        seed_list_master = df['seed_clean'].unique().tolist()
         
-        seed_class_list = []
+        seed_list = []
         
-        for seed in seed_list:
+        for seed in seed_list_master:
             print("Processing Seed class generation "+str(num)+"...")
             num = num + 1
 
@@ -502,17 +654,62 @@ def generate_classes():
             length = df_mst_temp['SEED_LENGTH'].iloc[0]
             
             # Formally instatiate Seed
-            seed_class_list.append(Seed(seed,check_dict,req_dict,play_dict,mst_map,length,'fast_ganon'))
-        pickle.dump(seed_class_list, open("latest_build/Output/combined/saved_seeds.p", "wb"))
+            seed_list.append(Seed(seed,check_dict,req_dict,play_dict,mst_map,length,'fast_ganon'))
+        pickle.dump(seed_list, open("latest_build/Output/combined/saved_seeds.p", "wb"))
     else:
         print("No data in data_dist. Check overall load.")
 
 
 
 
+def generate_gomode():
+    os.chdir(MAIN_DIR)
+    print("Generating gomode dataframe...")
+    seed_list = pickle.load(open("latest_build/Output/combined/saved_seeds.p", "rb"))
+    
+    seed_list_medallions = []
+    seed_list_alldungeons = []
+    
+    for seed in seed_list:
+        if seed.length == 'all_dungeons':
+            seed_list_alldungeons.append(seed)
+        else:
+            seed_list_medallions.append(seed)
+    seed_list_medallions_len = len(seed_list_medallions)
+    seed_list_alldungeons_len = len(seed_list_alldungeons)
 
+    df_master = pd.DataFrame()
+    for seed in seed_list:
+        df = pd.DataFrame.from_dict(seed.gomode_dict,orient='index')
+        df.reset_index(inplace=True)
+        df.columns = ['check','reward']
+        df['seed'] = seed.name
+        df['count'] = 1
+        df['mst'] = seed.mst
+        df['length'] = seed.length
+        df_master = df_master.append(df)
+        
+    df_master.to_csv('latest_build/Output/combined/data_gomode.csv')
+    
+    df_pivot_c = df_master.pivot_table(index=['check'],values='count',columns='length',aggfunc=np.sum).fillna(0)
+    df_pivot_c['all_dungeons_%'] = round((df_pivot_c['all_dungeons'] / seed_list_alldungeons_len) * 100,4)
+    df_pivot_c['medallions_%'] = round((df_pivot_c['medallions'] / seed_list_medallions_len) * 100,4)
+    df_pivot_c['delta'] = df_pivot_c['all_dungeons_%'] - df_pivot_c['medallions_%']
+    df_pivot_c = df_pivot_c.sort_values(by='delta',ascending=False)
+    df_pivot_c.to_csv('latest_build/Output/combined/data_gomode_pivotcheck.csv')
+    
+    df_pivot_cr = df_master.pivot_table(index=['check','reward'],values='count',columns='length',aggfunc=np.sum).fillna(0)
+    df_pivot_cr['all_dungeons_%'] = df_pivot_cr['all_dungeons'] / seed_list_alldungeons_len
+    df_pivot_cr['medallions_%'] = df_pivot_cr['medallions'] / seed_list_medallions_len
+    df_pivot_cr['delta'] = df_pivot_cr['all_dungeons_%'] - df_pivot_cr['medallions_%']
+    df_pivot_cr = df_pivot_cr.sort_values(by='delta',ascending=False)
+    df_pivot_cr.to_csv('latest_build/Output/combined/data_gomode_pivotcheckreward.csv')
 
+    # df_gomode = df_master.copy()
+    # df_gomode_check = df_pivot_c.copy()
+    # df_gomode_checkreward = df_pivot_cr.copy()
 
+    os.chdir(MAIN_DIR)
 
 
 
@@ -543,6 +740,7 @@ def run():
     aggregate_required()
     archive_seeds()
     generate_classes()
+    generate_gomode()
 
 def run_noarchive():
     clear_files()
@@ -550,7 +748,8 @@ def run_noarchive():
     aggregate_playthrough()
     aggregate_required()
     generate_classes()
-    
+    generate_gomode()
 
 #run_seeds()
 #run()
+#seed_list = pickle.load(open("latest_build/Output/combined/saved_seeds.p", "rb"))
