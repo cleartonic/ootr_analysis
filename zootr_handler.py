@@ -82,6 +82,8 @@ def clear_files():
         os.remove('play_processed/'+file)
     for file in os.listdir('req_processed/'):
         os.remove('req_processed/'+file)
+    for file in os.listdir('gomode_processed/'):
+        os.remove('gomode_processed/'+file)
 
     os.chdir('../combined/')
     os.mkdir('combined_archive/'+time_str)
@@ -678,17 +680,30 @@ def generate_gomode():
     seed_list_medallions_len = len(seed_list_medallions)
     seed_list_alldungeons_len = len(seed_list_alldungeons)
 
+    num1 = 0
+    num2 = 100
+    while num1 < len(seed_list):
+        print('Processing gomode batch '+str(num1))
+        df_master = pd.DataFrame()
+        for seed in seed_list[num1:num2]:
+            df = pd.DataFrame.from_dict(seed.gomode_dict,orient='index')
+            df.reset_index(inplace=True)
+            df.columns = ['check','reward']
+            df['seed'] = seed.name
+            df['count'] = 1
+            df['mst'] = seed.mst
+            df['length'] = seed.length
+            df_master = df_master.append(df)    
+        num1 = num1 + 100
+        num2 = num2 + 100
+        df_master.to_csv('latest_build/Output/processing/gomode_processed/data_gomode'+str(num1)+'.csv')
+    
     df_master = pd.DataFrame()
-    for seed in seed_list:
-        df = pd.DataFrame.from_dict(seed.gomode_dict,orient='index')
-        df.reset_index(inplace=True)
-        df.columns = ['check','reward']
-        df['seed'] = seed.name
-        df['count'] = 1
-        df['mst'] = seed.mst
-        df['length'] = seed.length
+    for csv in os.listdir('latest_build/Output/processing/gomode_processed/'):
+        df = pd.read_csv('latest_build/Output/processing/gomode_processed/'+csv)
         df_master = df_master.append(df)
         
+    df_master.drop('Unnamed: 0',axis=1,inplace=True)
     df_master.to_csv('latest_build/Output/combined/data_gomode.csv')
     
     df_pivot_c = df_master.pivot_table(index=['check'],values='count',columns='length',aggfunc=np.sum).fillna(0)

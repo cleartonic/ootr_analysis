@@ -15,8 +15,15 @@ import time
 MAIN_DIR = os.getcwd()
 RENDER_TIME = str(int(time.time()))
 ASSIGN_CLASS_MODIFICATIONS = False
-LOAD_DATAFRAMES = True
+PICKLE_LOAD = False
+LOAD_DIST = True
+LOAD_REQ = False
+LOAD_PLAY = False
+LOAD_GOMODE = False
 LOAD_SEED_CLASSES = True
+
+pd.options.display.max_rows = 100
+pd.options.display.max_columns = 10
 
 
 # TO DO 
@@ -125,10 +132,13 @@ class Seed:
             
     def filter_checklist(self,filter_list):
         self.output_checks = { your_key: self.check_dict[your_key] for your_key in filter_list }
-        
-
     def filter_rewardlist(self,filter_list):
         self.output_rewards = {k:v for k, v in self.check_dict.items() if v in filter_list}
+        
+    def filter_gomode_checks(self,filter_list):
+        self.output_checks = { your_key: self.gomode_dict[your_key] for your_key in filter_list }
+    def filter_gomode_rewards(self,filter_list):
+        self.output_rewards = {k:v for k, v in self.gomode_dict.items() if v in filter_list}
         
     def info(self):
         print("-----")
@@ -177,6 +187,17 @@ def filter_dict(input_dict, filter_str, filter_type):
     else:
         print("Error on filter_type.")
         return None
+    
+    
+def filter_check_rank(rank_num):
+    # Arguments: dictionary, filter string, filter_type
+    # filter_type = eiter keys or values of the dictionary
+    # returns a LIST
+    if rank_num > 10:
+        print("Error on rank num. Use an integer less than 11.")
+    else:
+        return list(check_lookup[check_lookup['rank']==rank_num].index)
+
     
 def filter_seedlist(original_seed_list, filter_method_list):
     # Arguments: Original seed list
@@ -325,25 +346,38 @@ songs = ['Impa at Castle','Song from Malon','Song from Saria','Song at Windmill'
 songs_rewards = ["Bolero of Fire","Eponas Song","Minuet of Forest","Nocturne of Shadow","Prelude of Light","Requiem of Spirit","Sarias Song","Serenade of Water","Song of Storms","Song of Time","Suns Song","Zeldas Lullaby"]
 
 
+if PICKLE_LOAD:
+    print("Loading saved pickle file...")
+    df_dist, df_gomode, df_play, df_req, seed_list = pickle.load(open('latest_build/Output/combined/saved_analysis_files.p', "rb"))
+    
 
-if LOAD_DATAFRAMES:
+if LOAD_DIST:
     os.chdir('latest_build/Output/combined/')
-    print("Loading dataframes...")
+    print("Loading dist...")
     # Distribution
-    if True:
-        df_dist = pd.read_csv('data_dist.csv')
-        df_dist = df_dist.join(check_lookup,on='check')
-        df_dist = df_dist.join(reward_lookup,on='reward')
+    df_dist = pd.read_csv('data_dist.csv')
+    df_dist = df_dist.join(check_lookup,on='check')
+    df_dist = df_dist.join(reward_lookup,on='reward')
+    os.chdir(MAIN_DIR)    
     
+if LOAD_REQ:
     # Required items only
-    if True:
-        df_req = pd.read_csv('data_req.csv')
-    
-    
+    os.chdir('latest_build/Output/combined/')
+    print("Loading req...")    
+    df_req = pd.read_csv('data_req.csv')
+    os.chdir(MAIN_DIR)
+if LOAD_PLAY:    
     # Playthrough only
-    if True:
-        df_play = pd.read_csv('data_play.csv')
-        
+    os.chdir('latest_build/Output/combined/')
+    print("Loading play...")
+    df_play = pd.read_csv('data_play.csv')
+    os.chdir(MAIN_DIR)
+    
+if LOAD_GOMODE:    
+    # Gomode only
+    os.chdir('latest_build/Output/combined/')
+    print("Loading gomode...")
+    df_gomode = pd.read_csv('data_gomode.csv')
     os.chdir(MAIN_DIR)
     
 if LOAD_SEED_CLASSES:
@@ -374,7 +408,7 @@ if LOAD_SEED_CLASSES:
 
 # # # THIS SHOULD BE BUILT IN ON SEED GENERATION:
 if ASSIGN_CLASS_MODIFICATIONS:
-    if True:
+    if False:
         print("Assiging seed class modifications to mst gomode...")
         for seed in seed_list:
             list_of_mst = seed.mst.split(" ")
@@ -399,7 +433,7 @@ if ASSIGN_CLASS_MODIFICATIONS:
         pickle.dump(seed_list, open("latest_build/Output/combined/saved_seeds.p", "wb"))
     
     
-    if True:
+    if False:
         print("Assigning gomode list")
         
         
@@ -454,24 +488,36 @@ if ASSIGN_CLASS_MODIFICATIONS:
                         final_dict[check] = item
                         break
             seed.gomode_dict = final_dict
-        # pickle.dump(seed_list, open("latest_build/Output/combined/saved_seeds.p", "wb"))
+        pickle.dump(seed_list, open("latest_build/Output/combined/saved_seeds.p", "wb"))
     
     
-    if True:
+    if False:
         print("Generating gomode dataframe...")
+        num1 = 0
+        num2 = 100
+        while num1 < len(seed_list):
+            print('Processing gomode batch '+str(num1))
+            df_master = pd.DataFrame()
+            for seed in seed_list[num1:num2]:
+                df = pd.DataFrame.from_dict(seed.gomode_dict,orient='index')
+                df.reset_index(inplace=True)
+                df.columns = ['check','reward']
+                df['seed'] = seed.name
+                df['count'] = 1
+                df['mst'] = seed.mst
+                df['length'] = seed.length
+                df_master = df_master.append(df)    
+            num1 = num1 + 100
+            num2 = num2 + 100
+            df_master.to_csv('latest_build/Output/processing/gomode_processed/data_gomode'+str(num1)+'.csv')
+        
         df_master = pd.DataFrame()
-        for seed in seed_list:
-            df = pd.DataFrame.from_dict(seed.gomode_dict,orient='index')
-            df.reset_index(inplace=True)
-            df.columns = ['check','reward']
-            df['seed'] = seed.name
-            df['count'] = 1
-            df['mst'] = seed.mst
-            df['length'] = seed.length
+        for csv in os.listdir('latest_build/Output/processing/gomode_processed/'):
+            df = pd.read_csv('latest_build/Output/processing/gomode_processed/'+csv)
             df_master = df_master.append(df)
             
+        df_master.drop('Unnamed: 0',axis=1,inplace=True)
         df_master.to_csv('latest_build/Output/combined/data_gomode.csv')
-        
         
         df_pivot_c = df_master.pivot_table(index=['check'],values='count',columns='length',aggfunc=np.sum).fillna(0)
         df_pivot_c['all_dungeons_%'] = round((df_pivot_c['all_dungeons'] / seed_list_alldungeons_len) * 100,4)
@@ -632,9 +678,9 @@ def seed_scorer(scorer='manual',sortby='ascending'):
             
             # Define check list by specific matching:
             
-            #check_list = list(set( filter_dict(check_dict, 'Mido', 'keys')))  # check_shadow + check_spirit + check_gtg + check_ice +
+            # check_list = list(set( filter_dict(check_dict, 'Mido', 'keys')))  # check_shadow + check_spirit + check_gtg + check_ice +
             check_list = list(set(check_worst))
-            check_list2 = list(set(check_deku + check_dc + check_noreqs))
+            # check_list2 = list(set(check_deku + check_dc + check_noreqs))
             
             for check in seed.check_dict.keys():
                 if check in check_list:
@@ -674,24 +720,29 @@ def seed_scorer(scorer='manual',sortby='ascending'):
     else:
         print(df_pivot_final.sort_values(by='score',ascending=False))
 
+    return df_pivot, df_pivot_final
+
+# =============================================================================
+# 
+#     # Highest and lowest scoring groups put into seed list
+#     seeds_high = []
+#     seeds_low = []
+#     df_pivot.reset_index(inplace=True)
+#     max_score = df_pivot['score'].unique().max()
+#     min_score = df_pivot['score'].unique().min()
+#     
+#     seeds_high_str = df_pivot[df_pivot['score']==max_score]['level_1'].unique().tolist()
+#     seeds_low_str = df_pivot[df_pivot['score']==min_score]['level_1'].unique().tolist()
+#     
+#     for seed_str in seeds_high_str:
+#         seeds_high.append(find_seed(seed_str))
+#     for seed_str in seeds_low_str:
+#         seeds_low.append(find_seed(seed_str))    
+#     
+#     return seeds_high, seeds_low, df_pivot, df_pivot_final
+# =============================================================================
 
 
-    # Highest and lowest scoring groups put into seed list
-    seeds_high = []
-    seeds_low = []
-    df_pivot.reset_index(inplace=True)
-    max_score = df_pivot['score'].unique().max()
-    min_score = df_pivot['score'].unique().min()
-    
-    seeds_high_str = df_pivot[df_pivot['score']==max_score]['level_1'].unique().tolist()
-    seeds_low_str = df_pivot[df_pivot['score']==min_score]['level_1'].unique().tolist()
-    
-    for seed_str in seeds_high_str:
-        seeds_high.append(find_seed(seed_str))
-    for seed_str in seeds_low_str:
-        seeds_low.append(find_seed(seed_str))    
-    
-    return seeds_high, seeds_low, df_pivot, df_pivot_final
 
 ##################
 # Find SHORTEST/LONGEST playthrus
@@ -923,6 +974,120 @@ def song_distribution():
 
 
 
+# =============================================================================
+# Scrappy code
+# =============================================================================
+
+# 
+    
+
+# =============================================================================
+# # go mode dist pivot
+#     
+# #pivot = df_gomode.pivot_table(index='check',columns='length',values='count',aggfunc=np.sum).sort_values(by='check',ascending=False)    
+# #pivot.reset_index(inplace=True)
+# #pivot['%_all_dungeons'] = pivot['all_dungeons'] / seed_list_alldungeons_len
+# #pivot['%_medallions'] = pivot['medallions'] / seed_list_medallions_len
+# #pivot['delta'] = pivot['%_all_dungeons'] - pivot['%_medallions']
+# #pivot = pivot.fillna(0)
+# #pivot2 = pivot.pivot_table(index='check',values=['%_medallions','%_all_dungeons','delta']).sort_values(by='delta',ascending=False)
+# #pivot2 = pivot2.round(4) * 100
+# #pivot2 = pivot2[['%_medallions','%_all_dungeons','delta']]
+# #pivot2.to_csv('analysis_render/GOMODE_DIST.csv')
+# =============================================================================
+
+
+#  all dist pivot
+ 
+# =============================================================================
+# pivot = df_dist.pivot_table(index=['check','reward'],values='count',aggfunc=np.sum).sort_values(by='check',ascending=False)
+# pivot.reset_index(inplace=True)
+# pivot['%'] = pivot['count']/len(seed_list)
+# pivot = pivot.fillna(0)
+# pivot2 = pivot.pivot_table(index=['check','reward'],values=['%']).sort_values(by=['check','%'],ascending=[True,False])
+# pivot2 = pivot2.round(4) * 100
+# pivot2.to_csv('analysis_render/DIST_FULL.csv')
+# 
+# pivot2.reset_index(inplace=True)
+# pivot3 = pivot2[pivot2['reward'].isin(reward_unique)]
+# pivot3 = pivot3.set_index('check')
+# pivot3.to_csv('analysis_render/DIST_UNIQUE.csv')
+# =============================================================================
+ 
+
+
+# =============================================================================
+# # distribution of gomode items in norequirement checks:
+#     
+# #seed_scores = {}
+# #d = filter_check_rank(1)
+# #for seed in seed_list:
+# #    seed_score = 0
+# #    for key in seed.gomode_dict:
+# #        if key in d:
+# #            seed_score = seed_score + 1
+# #    seed_scores[seed.name] = seed_score
+# #    
+# #d = pd.DataFrame.from_dict(seed_scores,orient='index').reset_index()
+# #d['group'] = d[0].astype(int)
+# #d.columns = ['seed','count','group']
+# #d['count'] = 1
+# #x = d.pivot_table(index='group',values='count',aggfunc=np.sum)
+# #x = x.reset_index()
+# #x.columns = ['Count of gomode items in noreq checks','# of seeds']
+# #x['%'] = x['# of seeds'] / len(seed_list)
+# #x.to_csv('analysis_render/NOREQ_GOMODE_DIST.csv',index=None)
+# #
+# 
+# # above split by all_dungeons / medallions
+#     
+# seed_scores = {}
+# filter_list = filter_check_rank(1)
+# for seed in seed_list_medallions:
+#     seed_score = 0
+#     for key in seed.gomode_dict:
+#         if key in filter_list:
+#             seed_score = seed_score + 1
+#     seed_scores[seed.name] = seed_score
+#     
+# d = pd.DataFrame.from_dict(seed_scores,orient='index').reset_index()
+# d['group'] = d[0].astype(int)
+# d.columns = ['seed','count','group']
+# d['count'] = 1
+# z = d.pivot_table(index='group',values='count',aggfunc=np.sum)
+# z = z.reset_index()
+# z.columns = ['Count of gomode items in noreq checks','# of seeds']
+# z['%'] = z['# of seeds'] / len(seed_list_medallions)
+# #z.to_csv('analysis_render/NOREQ_GOMODE_DIST_MEDALLIONS.csv',index=None)
+# 
+# seed_scores = {}
+# filter_list = filter_check_rank(1)
+# for seed in seed_list_alldungeons:
+#     seed_score = 0
+#     for key in seed.gomode_dict:
+#         if key in filter_list:
+#             seed_score = seed_score + 1
+#     seed_scores[seed.name] = seed_score
+#     
+# d = pd.DataFrame.from_dict(seed_scores,orient='index').reset_index()
+# d['group'] = d[0].astype(int)
+# d.columns = ['seed','count','group']
+# d['count'] = 1
+# y = d.pivot_table(index='group',values='count',aggfunc=np.sum)
+# y = y.reset_index()
+# y.columns = ['Count of gomode items in noreq checks','# of seeds']
+# y['%'] = y['# of seeds'] / len(seed_list_alldungeons)
+# #y.to_csv('analysis_render/NOREQ_GOMODE_DIST_ALLDUNGEONS.csv',index=None)
+# 
+# y = y.set_index('Count of gomode items in noreq checks')
+# y.columns = ['# of seeds_alldungeons','%_alldungeons']
+# z = z.set_index('Count of gomode items in noreq checks')
+# z.columns = ['# of seeds_medallions','%_medallions']
+# a = y.join(z)
+# a = a.fillna(0)
+# a = a.drop(['# of seeds_medallions','# of seeds_alldungeons'],axis=1)
+# a.to_csv('analysis_render/NOREQ_GOMODE_DIST_SPLIT.csv')
+# =============================================================================
 
 ###################
 # RUN 
