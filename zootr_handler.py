@@ -20,8 +20,8 @@ MAIN_DIR = os.getcwd()
 sys.path.append('latest_build/')
 time_str = str(datetime.datetime.now()).replace(":","-")
 time_now = "archived/archive_"+time_str+"/"
-cluster_size = 5
-generate_num = 10
+cluster_size = 100
+generate_num = 20000
 
 
 #################

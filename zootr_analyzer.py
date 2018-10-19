@@ -15,7 +15,7 @@ import time
 MAIN_DIR = os.getcwd()
 RENDER_TIME = str(int(time.time()))
 ASSIGN_CLASS_MODIFICATIONS = False
-LOAD_DATAFRAMES = False
+LOAD_DATAFRAMES = True
 LOAD_SEED_CLASSES = True
 
 
@@ -328,7 +328,7 @@ songs_rewards = ["Bolero of Fire","Eponas Song","Minuet of Forest","Nocturne of 
 
 if LOAD_DATAFRAMES:
     os.chdir('latest_build/Output/combined/')
-    print("Loading data...")
+    print("Loading dataframes...")
     # Distribution
     if True:
         df_dist = pd.read_csv('data_dist.csv')
@@ -347,6 +347,7 @@ if LOAD_DATAFRAMES:
     os.chdir(MAIN_DIR)
     
 if LOAD_SEED_CLASSES:
+    print("Loading seed classes...")
     # Seed classes    
     if True:
         seed_list = pickle.load(open('latest_build/Output/combined/saved_seeds.p', "rb"))
@@ -373,7 +374,7 @@ if LOAD_SEED_CLASSES:
 
 # # # THIS SHOULD BE BUILT IN ON SEED GENERATION:
 if ASSIGN_CLASS_MODIFICATIONS:
-    if False:
+    if True:
         print("Assiging seed class modifications to mst gomode...")
         for seed in seed_list:
             list_of_mst = seed.mst.split(" ")
@@ -398,7 +399,7 @@ if ASSIGN_CLASS_MODIFICATIONS:
         pickle.dump(seed_list, open("latest_build/Output/combined/saved_seeds.p", "wb"))
     
     
-    if False:
+    if True:
         print("Assigning gomode list")
         
         
@@ -456,7 +457,7 @@ if ASSIGN_CLASS_MODIFICATIONS:
         # pickle.dump(seed_list, open("latest_build/Output/combined/saved_seeds.p", "wb"))
     
     
-    if False:
+    if True:
         print("Generating gomode dataframe...")
         df_master = pd.DataFrame()
         for seed in seed_list:
